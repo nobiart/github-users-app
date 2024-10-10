@@ -1,35 +1,86 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import {useEffect, useState} from "react";
+import axios from "axios";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+type SearchUser = {
+  login: string,
+  id: number,
 }
 
-export default App
+type SearchResult = {
+  items: SearchUser[];
+}
+
+type UserType = {
+  login: string,
+  id: number,
+  avatar_url: string,
+  followers: number,
+}
+
+export const App = () => {
+  const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
+  const [userDetails, setUserDetails] = useState<UserType | null>(null);
+  const [users, setUsers] = useState<SearchUser[]>([]);
+  const [tempSearch, setTempSearch] = useState<string>("it-kamasutra");
+  const [searchTerm, setSearchTerm] = useState<string>("it-kamasutra");
+
+  useEffect(() => {
+    if (selectedUser) {
+      document.title = selectedUser.login;
+    }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    axios
+      .get<SearchResult>(`https://api.github.com/search/users?q=${searchTerm}`)
+      .then(res => setUsers(res.data.items))
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (selectedUser) {
+      axios
+        .get<UserType>(`https://api.github.com/users/${selectedUser.login}`)
+        .then(res => setUserDetails(res.data))
+    }
+  }, [selectedUser]);
+
+  return (
+    <div className="container">
+      <div className="asideLeft">
+        <div className="searchForm">
+          <input
+            type="text"
+            placeholder="Search"
+            value={tempSearch}
+            onChange={(e) => setTempSearch(e.currentTarget.value)}
+          />
+          <button onClick={() => setSearchTerm(tempSearch)}>Find</button>
+        </div>
+        <ul>
+          { users.map((u) => (
+            <li
+              className={selectedUser === u ? "selected" : ""}
+              key={u.id}
+              onClick={() => {
+                setSelectedUser(u);
+              }}
+            >
+              {u.login}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="content">
+        <h2 className="heading">User Details</h2>
+        {userDetails && (
+          <div>
+            <img src={userDetails.avatar_url} alt={userDetails.login} width="80"/>
+            <p>Login: {userDetails.login}</p>
+            <p>Followers: {userDetails.followers}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
